@@ -1,0 +1,21 @@
+[package]
+name = "kapsule"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+path = "src/core/lib.rs"
+
+[[bin]]
+name = "kapsule-gui"
+path = "src/gui/main.rs"
+
+[dependencies]
+druid = { git = "https://github.com/linebender/druid.git", features = ["im"] }
+tar = "*"
+flate2 = "*"
+zip = "*"
+anyhow = "*"
+encoding_rs = "*"
+chardetng = "*"
+tracing = "*"
