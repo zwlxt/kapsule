@@ -1,8 +1,8 @@
-use crate::{ArchiveFile, Entry, ExtractDest, util};
+use crate::{util, ArchiveFile, Entry, ExtractDest};
 use anyhow::{bail, Result};
 use flate2::read::GzDecoder;
 use std::{fs::File, path::Path};
-use tar::{Archive};
+use tar::{Archive, EntryType};
 
 use zip::ZipArchive;
 
@@ -41,9 +41,16 @@ impl ArchiveFile for TgzFile {
             Some(Ok(mut entry)) => {
                 match dest {
                     ExtractDest::File(f) => {
-                        // create file for extraction
-                        let mut dest_file = File::create(f)?;
-                        std::io::copy(&mut entry, &mut dest_file)?;
+                        match entry.header().entry_type() {
+                            EntryType::Directory => {
+                                todo!()
+                            },
+                            _ => {
+                                // create file for extraction
+                                let mut dest_file = File::create(f)?;
+                                std::io::copy(&mut entry, &mut dest_file)?;
+                            }
+                        }
                     }
                     ExtractDest::Dir(d) => {
                         entry.unpack_in(d)?;
@@ -92,8 +99,20 @@ impl ArchiveFile for ZipFile {
         }))
     }
 
-    fn extract(&mut self, _entry: &str, _dest: ExtractDest) -> Result<()> {
-        todo!()
+    fn extract(&mut self, entry: &str, dest: ExtractDest) -> Result<()> {
+        match dest {
+            ExtractDest::File(f) => {
+                let mut file = self.archive.by_name(entry)?;
+                if file.is_dir() {
+                    todo!()
+                } else {
+                    let mut dest_file = File::create(f)?;
+                    std::io::copy(&mut file, &mut dest_file)?;
+                }
+            }
+            ExtractDest::Dir(_) => todo!(),
+        }
+        Ok(())
     }
 
     fn extract_all<P: AsRef<Path>>(&mut self, _dest: P) -> Result<()> {
@@ -121,7 +140,7 @@ impl Iterator for ZipEntries<'_> {
             Some(Ok(Entry {
                 name: s.to_string(),
             }))
-        } else {
+        } else { 
             None
         }
     }

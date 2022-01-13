@@ -20,11 +20,11 @@ pub enum ExtractDest<'a> {
     Dir(&'a dyn AsRef<Path>),
 }
 
-pub type ProgressCallback = Box<dyn Fn(usize, usize)>;
+pub type ProgressCallback = dyn Fn(usize, usize);
 
-pub struct ProgressMonitor {
-    pub progress: ProgressCallback,
-    pub overall_progress: ProgressCallback,
+pub struct ProgressMonitor<'a> {
+    pub progress: &'a ProgressCallback,
+    pub overall_progress: &'a ProgressCallback,
 }
 
 #[cfg(test)]
