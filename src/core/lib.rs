@@ -22,9 +22,9 @@ pub enum ExtractDest<'a> {
 
 pub type ProgressCallback = dyn Fn(usize, usize);
 
-pub struct ProgressMonitor<'a> {
-    pub progress: &'a ProgressCallback,
-    pub overall_progress: &'a ProgressCallback,
+pub struct ProgressMonitor {
+    pub progress: &'static ProgressCallback,
+    pub overall_progress: &'static ProgressCallback,
 }
 
 #[cfg(test)]

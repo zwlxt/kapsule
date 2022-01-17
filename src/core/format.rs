@@ -1,5 +1,5 @@
 use crate::{util, ArchiveFile, Entry, ExtractDest};
-use anyhow::{bail, Result};
+use anyhow::{bail, Result, anyhow};
 use flate2::read::GzDecoder;
 use std::{fs::File, path::Path};
 use tar::{Archive, EntryType};
@@ -73,10 +73,14 @@ impl<R: std::io::Read> TryFrom<&tar::Entry<'_, R>> for Entry {
     type Error = anyhow::Error;
 
     fn try_from(entry: &tar::Entry<'_, R>) -> Result<Self, Self::Error> {
+        let path_raw = entry.path_bytes();
+        let enc = util::guess_encoding(&path_raw, util::get_sys_encoding());
+        let (path, _, _) = enc.decode(&path_raw);
+
         Ok(Self {
-            name: entry.path()?.to_string_lossy().into_owned(),
+            name: path.to_string(),
         })
-    }
+    } 
 }
 
 pub struct ZipFile {
@@ -130,16 +134,20 @@ impl Iterator for ZipEntries<'_> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.idx < self.zip_file.archive.len() {
-            let entry = self.zip_file.archive.by_index(self.idx).unwrap();
-            self.idx += 1;
-            let enc = util::guess_encoding(entry.name_raw(), None);
-            // TODO try system encoding when the detector is not confident
-
-            let (s, _, _) = enc.decode(entry.name_raw());
-
-            Some(Ok(Entry {
-                name: s.to_string(),
-            }))
+            let r = match self.zip_file.archive.by_index(self.idx) {
+                Ok(entry) => {
+                    self.idx += 1;
+            
+                    let enc = util::guess_encoding(entry.name_raw(), util::get_sys_encoding());
+                    let (s, _, _) = enc.decode(entry.name_raw());
+        
+                    Ok(Entry {
+                        name: s.to_string(),
+                    })
+                },
+                Err(e) => Err(anyhow!(e)),
+            };
+            Some(r)
         } else { 
             None
         }
