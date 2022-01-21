@@ -1,4 +1,4 @@
-use crate::{util, ArchiveFile, Entry, ExtractDest};
+use crate::{util::{self, encoding::DecoderExt}, ArchiveFile, Entry, ExtractDest};
 use anyhow::{bail, Result, anyhow};
 use flate2::read::GzDecoder;
 use std::{fs::File, path::Path};
@@ -74,11 +74,9 @@ impl<R: std::io::Read> TryFrom<&tar::Entry<'_, R>> for Entry {
 
     fn try_from(entry: &tar::Entry<'_, R>) -> Result<Self, Self::Error> {
         let path_raw = entry.path_bytes();
-        let enc = util::guess_encoding(&path_raw, util::get_sys_encoding());
-        let (path, _, _) = enc.decode(&path_raw);
 
         Ok(Self {
-            name: path.to_string(),
+            name: path_raw.guess_and_decode(),
         })
     } 
 }
@@ -119,8 +117,8 @@ impl ArchiveFile for ZipFile {
         Ok(())
     }
 
-    fn extract_all<P: AsRef<Path>>(&mut self, _dest: P) -> Result<()> {
-        todo!()
+    fn extract_all<P: AsRef<Path>>(&mut self, dest: P) -> Result<()> {
+        Ok(self.archive.extract(dest)?)
     }
 }
 
@@ -138,11 +136,8 @@ impl Iterator for ZipEntries<'_> {
                 Ok(entry) => {
                     self.idx += 1;
             
-                    let enc = util::guess_encoding(entry.name_raw(), util::get_sys_encoding());
-                    let (s, _, _) = enc.decode(entry.name_raw());
-        
                     Ok(Entry {
-                        name: s.to_string(),
+                        name: entry.name_raw().guess_and_decode(),
                     })
                 },
                 Err(e) => Err(anyhow!(e)),
